@@ -1,35 +1,53 @@
+// firebase.js
+
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getMessaging } from "firebase/messaging";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getMessaging } from "firebase/messaging";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
-// Production Firebase Configuration
+// 🔐 Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyB31LFBAHo3Br3Hvih-8xmH7jMnr6BP2WQ",
   authDomain: "scraplink-e4121.firebaseapp.com",
   projectId: "scraplink-e4121",
-  storageBucket: "scraplink-e4121.firebasestorage.app",
   messagingSenderId: "416158070492",
   appId: "1:416158070492:web:6052f93175428bacbea619",
   measurementId: "G-KXWBN0C74T"
 };
 
-// Initialize Firebase
+// 🚀 Init
 const app = initializeApp(firebaseConfig);
+
+// 🔥 Core
 const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Analytics & Messaging initialized safely (may fail in SSR/Environment-less mode)
-let analytics, messaging;
-if (typeof window !== 'undefined') {
-  analytics = getAnalytics(app);
+// 🌐 Optional (safe)
+let analytics = null;
+let messaging = null;
+
+if (typeof window !== "undefined") {
+  // Analytics safe init
+  isSupported().then((yes) => {
+    if (yes) analytics = getAnalytics(app);
+  });
+
+  // Messaging safe init
   try {
     messaging = getMessaging(app);
   } catch (e) {
-    console.warn("Messaging failed to init:", e);
+    console.warn("Messaging init failed:", e);
   }
 }
 
-export { db, messaging, analytics, app, auth, googleProvider };
+// 📦 Export
+export {
+  app,
+  db,
+  auth,
+  googleProvider,
+  analytics,
+  messaging
+};
