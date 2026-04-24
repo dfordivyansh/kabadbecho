@@ -3,7 +3,7 @@ import {
   Search, Filter, Eye, MessageSquare, AlertCircle, 
   CheckCircle2, Clock, User, FileText, Tag
 } from 'lucide-react';
-import { db, auth } from '../../firebase';
+import { db } from '../../firebase';
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 const ComplaintsSupport = () => {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { 
+import React, { useState, useEffect } from "react";
+import {
   Truck,
   Package,
   CheckCircle,
@@ -17,139 +17,217 @@ import {
   Navigation,
   Star,
   MessageSquare,
-  X
-} from 'lucide-react';
-import TrackingModal from './TrackingModal';
-import { auth, db } from '../../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+  X,
+} from "lucide-react";
+import TrackingModal from "./TrackingModal";
+import { customerAuth, db } from "../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 const MOCK_PICKUPS = [
   {
-    id: 'KB123456',
-    date: '2024-12-28',
-    time: '09:00 AM - 11:00 AM',
-    scrapType: 'Metal Scrap',
-    emoji: '🔩',
-    weight: '45 kg',
-    amount: '₹1,800',
-    status: 'completed',
-    address: '123 Green Street, Eco City, Mumbai',
-    customer: 'Rajesh Kumar',
-    phone: '+91 98765 43210',
-    driverName: 'Amit Sharma',
-    driverPhone: '+91 98765 11111',
+    id: "KB123456",
+    date: "2024-12-28",
+    time: "09:00 AM - 11:00 AM",
+    scrapType: "Metal Scrap",
+    emoji: "🔩",
+    weight: "45 kg",
+    amount: "₹1,800",
+    status: "completed",
+    address: "123 Green Street, Eco City, Mumbai",
+    customer: "Rajesh Kumar",
+    phone: "+91 98765 43210",
+    driverName: "Amit Sharma",
+    driverPhone: "+91 98765 11111",
     rating: 5,
     statusHistory: [
-      { status: 'Booked', time: '10:30 AM', date: '2024-12-27', completed: true },
-      { status: 'Confirmed', time: '11:00 AM', date: '2024-12-27', completed: true },
-      { status: 'Driver Assigned', time: '08:30 AM', date: '2024-12-28', completed: true },
-      { status: 'Out for Pickup', time: '09:00 AM', date: '2024-12-28', completed: true },
-      { status: 'Collected', time: '09:45 AM', date: '2024-12-28', completed: true },
-      { status: 'Payment Done', time: '09:50 AM', date: '2024-12-28', completed: true }
-    ]
-  },
-  {
-    id: 'KB123457',
-    date: '2024-12-29',
-    time: '01:00 PM - 03:00 PM',
-    scrapType: 'Plastic Scrap',
-    emoji: '♻️',
-    weight: 'Not weighed',
-    amount: 'Pending',
-    status: 'in-progress',
-    address: '456 Eco Avenue, Green Park, Mumbai',
-    customer: 'Priya Sharma',
-    phone: '+91 98765 43211',
-    driverName: 'Vikram Singh',
-    driverPhone: '+91 98765 22222',
-    rating: null,
-    statusHistory: [
-      { status: 'Booked', time: '03:30 PM', date: '2024-12-28', completed: true },
-      { status: 'Confirmed', time: '03:45 PM', date: '2024-12-28', completed: true },
-      { status: 'Driver Assigned', time: '12:30 PM', date: '2024-12-29', completed: true },
-      { status: 'Out for Pickup', time: '01:00 PM', date: '2024-12-29', completed: true },
-      { status: 'Collected', time: '', date: '', completed: false },
-      { status: 'Payment Done', time: '', date: '', completed: false }
+      {
+        status: "Booked",
+        time: "10:30 AM",
+        date: "2024-12-27",
+        completed: true,
+      },
+      {
+        status: "Confirmed",
+        time: "11:00 AM",
+        date: "2024-12-27",
+        completed: true,
+      },
+      {
+        status: "Driver Assigned",
+        time: "08:30 AM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Out for Pickup",
+        time: "09:00 AM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Collected",
+        time: "09:45 AM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Payment Done",
+        time: "09:50 AM",
+        date: "2024-12-28",
+        completed: true,
+      },
     ],
-    pickupLocation: { lat: 19.0760, lng: 72.8777 },
-    deliveryLocation: { lat: 19.0820, lng: 72.8820 },
-    driverLocation: { lat: 19.0780, lng: 72.8795 },
   },
   {
-    id: 'KB123458',
-    date: '2024-12-30',
-    time: '11:00 AM - 01:00 PM',
-    scrapType: 'E-Waste',
-    emoji: '📱',
-    weight: 'Not weighed',
-    amount: 'Pending',
-    status: 'scheduled',
-    address: '789 Recycle Road, Clean City, Mumbai',
-    customer: 'Anjali Desai',
-    phone: '+91 98765 43212',
-    driverName: 'To be assigned',
-    driverPhone: '-',
+    id: "KB123457",
+    date: "2024-12-29",
+    time: "01:00 PM - 03:00 PM",
+    scrapType: "Plastic Scrap",
+    emoji: "♻️",
+    weight: "Not weighed",
+    amount: "Pending",
+    status: "in-progress",
+    address: "456 Eco Avenue, Green Park, Mumbai",
+    customer: "Priya Sharma",
+    phone: "+91 98765 43211",
+    driverName: "Vikram Singh",
+    driverPhone: "+91 98765 22222",
     rating: null,
     statusHistory: [
-      { status: 'Booked', time: '05:30 PM', date: '2024-12-28', completed: true },
-      { status: 'Confirmed', time: '05:45 PM', date: '2024-12-28', completed: true },
-      { status: 'Driver Assigned', time: '', date: '', completed: false },
-      { status: 'Out for Pickup', time: '', date: '', completed: false },
-      { status: 'Collected', time: '', date: '', completed: false },
-      { status: 'Payment Done', time: '', date: '', completed: false }
-    ]
+      {
+        status: "Booked",
+        time: "03:30 PM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Confirmed",
+        time: "03:45 PM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Driver Assigned",
+        time: "12:30 PM",
+        date: "2024-12-29",
+        completed: true,
+      },
+      {
+        status: "Out for Pickup",
+        time: "01:00 PM",
+        date: "2024-12-29",
+        completed: true,
+      },
+      { status: "Collected", time: "", date: "", completed: false },
+      { status: "Payment Done", time: "", date: "", completed: false },
+    ],
+    pickupLocation: { lat: 19.076, lng: 72.8777 },
+    deliveryLocation: { lat: 19.082, lng: 72.882 },
+    driverLocation: { lat: 19.078, lng: 72.8795 },
   },
   {
-    id: 'KB123459',
-    date: '2024-12-31',
-    time: '03:00 PM - 05:00 PM',
-    scrapType: 'Paper Scrap',
-    emoji: '📄',
-    weight: 'Not weighed',
-    amount: 'Pending',
-    status: 'scheduled',
-    address: '321 Sustainable Street, Eco Zone, Mumbai',
-    customer: 'Suresh Mehta',
-    phone: '+91 98765 43213',
-    driverName: 'To be assigned',
-    driverPhone: '-',
+    id: "KB123458",
+    date: "2024-12-30",
+    time: "11:00 AM - 01:00 PM",
+    scrapType: "E-Waste",
+    emoji: "📱",
+    weight: "Not weighed",
+    amount: "Pending",
+    status: "scheduled",
+    address: "789 Recycle Road, Clean City, Mumbai",
+    customer: "Anjali Desai",
+    phone: "+91 98765 43212",
+    driverName: "To be assigned",
+    driverPhone: "-",
     rating: null,
     statusHistory: [
-      { status: 'Booked', time: '02:30 PM', date: '2024-12-29', completed: true },
-      { status: 'Confirmed', time: '02:45 PM', date: '2024-12-29', completed: true },
-      { status: 'Driver Assigned', time: '', date: '', completed: false },
-      { status: 'Out for Pickup', time: '', date: '', completed: false },
-      { status: 'Collected', time: '', date: '', completed: false },
-      { status: 'Payment Done', time: '', date: '', completed: false }
-    ]
-  }
+      {
+        status: "Booked",
+        time: "05:30 PM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      {
+        status: "Confirmed",
+        time: "05:45 PM",
+        date: "2024-12-28",
+        completed: true,
+      },
+      { status: "Driver Assigned", time: "", date: "", completed: false },
+      { status: "Out for Pickup", time: "", date: "", completed: false },
+      { status: "Collected", time: "", date: "", completed: false },
+      { status: "Payment Done", time: "", date: "", completed: false },
+    ],
+  },
+  {
+    id: "KB123459",
+    date: "2024-12-31",
+    time: "03:00 PM - 05:00 PM",
+    scrapType: "Paper Scrap",
+    emoji: "📄",
+    weight: "Not weighed",
+    amount: "Pending",
+    status: "scheduled",
+    address: "321 Sustainable Street, Eco Zone, Mumbai",
+    customer: "Suresh Mehta",
+    phone: "+91 98765 43213",
+    driverName: "To be assigned",
+    driverPhone: "-",
+    rating: null,
+    statusHistory: [
+      {
+        status: "Booked",
+        time: "02:30 PM",
+        date: "2024-12-29",
+        completed: true,
+      },
+      {
+        status: "Confirmed",
+        time: "02:45 PM",
+        date: "2024-12-29",
+        completed: true,
+      },
+      { status: "Driver Assigned", time: "", date: "", completed: false },
+      { status: "Out for Pickup", time: "", date: "", completed: false },
+      { status: "Collected", time: "", date: "", completed: false },
+      { status: "Payment Done", time: "", date: "", completed: false },
+    ],
+  },
 ];
 
 const KabadBechoTrackPickup = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [selectedPickup, setSelectedPickup] = useState(null);
   const [pickups, setPickups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(customerAuth, (user) => {
       if (!user) {
         setIsLoading(false);
         return;
       }
 
-      const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+      const q = query(
+        collection(db, "orders"),
+        where("userId", "==", user.uid),
+      );
       const unsubscribeData = onSnapshot(q, (snapshot) => {
-        const orders = snapshot.docs.map(doc => ({
+        const orders = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          emoji: '♻️', // Generic fallback
+          emoji: "♻️", // Generic fallback
           statusHistory: doc.data().statusHistory || [
-            { status: 'Booked', time: '', date: '', completed: true },
-            { status: 'Confirmed', time: '', date: '', completed: doc.data().status !== 'pending' }
-          ]
+            { status: "Booked", time: "", date: "", completed: true },
+            {
+              status: "Confirmed",
+              time: "",
+              date: "",
+              completed: doc.data().status !== "pending",
+            },
+          ],
         }));
         setPickups(orders);
         setIsLoading(false);
@@ -163,38 +241,59 @@ const KabadBechoTrackPickup = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
-        return 'from-[#66BB6A] to-[#4CAF50]';
-      case 'in-progress':
-        return 'from-[#FFA726] to-[#FF9800]';
-      case 'scheduled':
-        return 'from-[#42A5F5] to-[#2196F3]';
+      case "completed":
+        return "from-[#66BB6A] to-[#4CAF50]";
+      case "in-progress":
+        return "from-[#FFA726] to-[#FF9800]";
+      case "scheduled":
+        return "from-[#42A5F5] to-[#2196F3]";
       default:
-        return 'from-gray-400 to-gray-500';
+        return "from-gray-400 to-gray-500";
     }
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'completed':
-        return { text: 'Completed', icon: <CheckCircle size={16} />, bg: 'bg-green-100', text_color: 'text-green-700' };
-      case 'in-progress':
-        return { text: 'In Progress', icon: <Truck size={16} />, bg: 'bg-orange-100', text_color: 'text-orange-700' };
-      case 'scheduled':
-        return { text: 'Scheduled', icon: <Clock size={16} />, bg: 'bg-blue-100', text_color: 'text-blue-700' };
+      case "completed":
+        return {
+          text: "Completed",
+          icon: <CheckCircle size={16} />,
+          bg: "bg-green-100",
+          text_color: "text-green-700",
+        };
+      case "in-progress":
+        return {
+          text: "In Progress",
+          icon: <Truck size={16} />,
+          bg: "bg-orange-100",
+          text_color: "text-orange-700",
+        };
+      case "scheduled":
+        return {
+          text: "Scheduled",
+          icon: <Clock size={16} />,
+          bg: "bg-blue-100",
+          text_color: "text-blue-700",
+        };
       default:
-        return { text: 'Unknown', icon: <AlertCircle size={16} />, bg: 'bg-gray-100', text_color: 'text-gray-700' };
+        return {
+          text: "Unknown",
+          icon: <AlertCircle size={16} />,
+          bg: "bg-gray-100",
+          text_color: "text-gray-700",
+        };
     }
   };
 
-  const filteredPickups = (pickups || []).filter(pickup => {
+  const filteredPickups = (pickups || []).filter((pickup) => {
     if (!pickup) return false;
-    const id = (pickup.id || '').toString().toLowerCase();
-    const type = (pickup.scrapType || '').toString().toLowerCase();
+    const id = (pickup.id || "").toString().toLowerCase();
+    const type = (pickup.scrapType || "").toString().toLowerCase();
     const search = searchQuery.toLowerCase();
-    
+
     const matchesSearch = id.includes(search) || type.includes(search);
-    const matchesFilter = filterStatus === 'all' || pickup.status === filterStatus;
+    const matchesFilter =
+      filterStatus === "all" || pickup.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
@@ -228,7 +327,9 @@ const KabadBechoTrackPickup = () => {
               </div>
               <div className="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-xl">
                 <div className="text-sm text-green-100">Completed</div>
-                <div className="text-2xl font-bold">{pickups.filter(p => p.status === 'completed').length}</div>
+                <div className="text-2xl font-bold">
+                  {pickups.filter((p) => p.status === "completed").length}
+                </div>
               </div>
             </div>
           </div>
@@ -255,19 +356,20 @@ const KabadBechoTrackPickup = () => {
 
             {/* Filter */}
             <div className="flex gap-2">
-              {['all', 'scheduled', 'in-progress', 'completed'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 capitalize ${
-                    filterStatus === status
-                      ? 'bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {status === 'all' ? 'All' : status.replace('-', ' ')}
-                </button>
-              ))}
+              {["all", "scheduled", "in-progress", "completed"].map(
+                (status) => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 capitalize ${
+                      filterStatus === status
+                        ? "bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white shadow-lg"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}>
+                    {status === "all" ? "All" : status.replace("-", " ")}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         </div>
@@ -281,8 +383,12 @@ const KabadBechoTrackPickup = () => {
               <div className="inline-flex items-center justify-center w-20 h-20 bg-[#E8F5E9] rounded-full mb-4">
                 <Package className="text-[#66BB6A]" size={40} />
               </div>
-              <h3 className="text-2xl font-bold text-[#5D4037] mb-2">No Pickups Found</h3>
-              <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+              <h3 className="text-2xl font-bold text-[#5D4037] mb-2">
+                No Pickups Found
+              </h3>
+              <p className="text-gray-600">
+                Try adjusting your search or filter criteria
+              </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -291,10 +397,10 @@ const KabadBechoTrackPickup = () => {
                 return (
                   <div
                     key={pickup.id}
-                    className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border border-gray-100 hover:border-[#66BB6A]"
-                  >
+                    className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group border border-gray-100 hover:border-[#66BB6A]">
                     {/* Header */}
-                    <div className={`bg-linear-to-r ${getStatusColor(pickup.status)} p-6 text-white`}>
+                    <div
+                      className={`bg-linear-to-r ${getStatusColor(pickup.status)} p-6 text-white`}>
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="text-4xl">{pickup.emoji}</div>
@@ -303,7 +409,8 @@ const KabadBechoTrackPickup = () => {
                             <div className="text-xl font-bold">{pickup.id}</div>
                           </div>
                         </div>
-                        <div className={`${statusBadge.bg} ${statusBadge.text_color} px-4 py-2 rounded-full flex items-center space-x-2 font-semibold`}>
+                        <div
+                          className={`${statusBadge.bg} ${statusBadge.text_color} px-4 py-2 rounded-full flex items-center space-x-2 font-semibold`}>
                           {statusBadge.icon}
                           <span className="text-sm">{statusBadge.text}</span>
                         </div>
@@ -325,36 +432,56 @@ const KabadBechoTrackPickup = () => {
                       {/* Scrap Details */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-[#E8F5E9] p-4 rounded-xl">
-                          <div className="text-sm text-gray-600 mb-1">Scrap Type</div>
-                          <div className="font-bold text-[#5D4037]">{pickup.scrapType}</div>
+                          <div className="text-sm text-gray-600 mb-1">
+                            Scrap Type
+                          </div>
+                          <div className="font-bold text-[#5D4037]">
+                            {pickup.scrapType}
+                          </div>
                         </div>
                         <div className="bg-[#E8F5E9] p-4 rounded-xl">
-                          <div className="text-sm text-gray-600 mb-1">Weight</div>
-                          <div className="font-bold text-[#5D4037]">{pickup.weight}</div>
+                          <div className="text-sm text-gray-600 mb-1">
+                            Weight
+                          </div>
+                          <div className="font-bold text-[#5D4037]">
+                            {pickup.weight}
+                          </div>
                         </div>
                       </div>
 
                       {/* Address */}
                       <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-xl">
-                        <MapPin className="text-[#66BB6A] shrink-0 mt-1" size={18} />
+                        <MapPin
+                          className="text-[#66BB6A] shrink-0 mt-1"
+                          size={18}
+                        />
                         <div>
-                          <div className="text-sm text-gray-600 mb-1">Pickup Address</div>
-                          <div className="text-sm font-medium text-gray-700">{pickup.address}</div>
+                          <div className="text-sm text-gray-600 mb-1">
+                            Pickup Address
+                          </div>
+                          <div className="text-sm font-medium text-gray-700">
+                            {pickup.address}
+                          </div>
                         </div>
                       </div>
 
                       {/* Driver Info */}
-                      {pickup.status !== 'scheduled' && pickup.driverName && (
+                      {pickup.status !== "scheduled" && pickup.driverName && (
                         <div className="flex items-center space-x-3 p-4 bg-linear-to-r from-[#E8F5E9] to-white rounded-xl border-l-4 border-[#66BB6A]">
                           <div className="w-12 h-12 bg-linear-to-br from-[#66BB6A] to-[#4CAF50] rounded-full flex items-center justify-center text-white font-bold text-lg">
-                            {(pickup.driverName || '?').charAt(0)}
+                            {(pickup.driverName || "?").charAt(0)}
                           </div>
                           <div className="flex-1">
                             <div className="text-sm text-gray-600">Driver</div>
-                            <div className="font-bold text-[#5D4037]">{pickup.driverName}</div>
-                            {pickup.driverPhone && pickup.driverPhone !== '-' && (
-                              <div className="text-sm text-gray-600">{pickup.driverPhone}</div>
-                            )}
+                            <div className="font-bold text-[#5D4037]">
+                              {pickup.driverName}
+                            </div>
+                            {pickup.driverPhone &&
+                              pickup.driverPhone !== "-" && (
+                                <div className="text-sm text-gray-600">
+                                  {pickup.driverPhone}
+                                </div>
+                              )}
                           </div>
                         </div>
                       )}
@@ -363,21 +490,31 @@ const KabadBechoTrackPickup = () => {
                       <div className="flex items-center justify-between p-4 bg-linear-to-r from-[#66BB6A]/10 to-[#4CAF50]/10 rounded-xl">
                         <div className="flex items-center space-x-2">
                           <DollarSign className="text-[#66BB6A]" size={20} />
-                          <span className="text-gray-700 font-medium">Total Amount</span>
+                          <span className="text-gray-700 font-medium">
+                            Total Amount
+                          </span>
                         </div>
-                        <div className="text-2xl font-bold text-[#66BB6A]">{pickup.amount}</div>
+                        <div className="text-2xl font-bold text-[#66BB6A]">
+                          {pickup.amount}
+                        </div>
                       </div>
 
                       {/* Rating (for completed) */}
-                      {pickup.status === 'completed' && pickup.rating && (
+                      {pickup.status === "completed" && pickup.rating && (
                         <div className="flex items-center justify-center space-x-2 p-3 bg-yellow-50 rounded-xl">
-                          <span className="text-sm text-gray-700 font-medium">Your Rating:</span>
+                          <span className="text-sm text-gray-700 font-medium">
+                            Your Rating:
+                          </span>
                           <div className="flex space-x-1">
                             {[...Array(5)].map((_, idx) => (
                               <Star
                                 key={idx}
                                 size={18}
-                                className={idx < pickup.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                className={
+                                  idx < pickup.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300"
+                                }
                               />
                             ))}
                           </div>
@@ -386,25 +523,24 @@ const KabadBechoTrackPickup = () => {
 
                       {/* Action Buttons */}
                       <div className="flex flex-col sm:flex-row gap-3">
-                        {pickup.status === 'in-progress' || pickup.status === 'Out for Pickup' ? (
+                        {pickup.status === "in-progress" ||
+                        pickup.status === "Out for Pickup" ? (
                           <button
                             onClick={() => setSelectedPickup(pickup)}
-                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-linear-to-r from-[#FF9800] to-[#F57C00] text-white font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-pulse"
-                          >
+                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-linear-to-r from-[#FF9800] to-[#F57C00] text-white font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 animate-pulse">
                             <Navigation size={18} />
                             <span>Track Live</span>
                           </button>
                         ) : (
                           <button
                             onClick={() => setSelectedPickup(pickup)}
-                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                          >
+                            className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
                             <Eye size={18} />
                             <span>View Details</span>
                           </button>
                         )}
-                        
-                        {pickup.status !== 'scheduled' && (
+
+                        {pickup.status !== "scheduled" && (
                           <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-white border-2 border-[#66BB6A] text-[#66BB6A] font-semibold rounded-xl hover:bg-[#E8F5E9] transition-all duration-300">
                             <Phone size={18} />
                             <span className="sm:hidden">Call Driver</span>
@@ -422,10 +558,10 @@ const KabadBechoTrackPickup = () => {
 
       {/* Detail Modal */}
       {selectedPickup && (
-        <TrackingModal 
-          selectedPickup={selectedPickup} 
-          onClose={() => setSelectedPickup(null)} 
-          getStatusColor={getStatusColor} 
+        <TrackingModal
+          selectedPickup={selectedPickup}
+          onClose={() => setSelectedPickup(null)}
+          getStatusColor={getStatusColor}
         />
       )}
 

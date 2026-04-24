@@ -1,27 +1,67 @@
-import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Recycle, Leaf, Info, Loader2, Chrome, Phone, Shield, Truck, UserCircle, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { auth, googleProvider, db } from '../firebase';
-import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import React, { useState } from "react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Recycle,
+  Leaf,
+  Info,
+  Loader2,
+  Chrome,
+  Phone,
+  Shield,
+  Truck,
+  UserCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  customerAuth,
+  partnerAuth,
+  adminAuth,
+  googleProvider,
+  db,
+} from "../firebase";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 const DEMO_CREDENTIALS = {
-  email: 'demo@example.com',
-  password: 'password123'
+  email: "demo@example.com",
+  password: "password123",
 };
 
 const ROLE_LABELS = {
-  user: 'Customer',
-  kabadi: 'Partner (Pickup Person)',
-  admin: 'Admin'
+  user: "Customer",
+  kabadi: "Partner (Pickup Person)",
+  admin: "Admin",
 };
 
-const KabadBechoLogin = ({ defaultRole = 'user' }) => {
+const KabadBechoLogin = ({ defaultRole = "user" }) => {
+  const getAuthByRole = () => {
+    if (role === "admin") return adminAuth;
+    if (role === "kabadi") return partnerAuth;
+    return customerAuth;
+  };
   const navigate = useNavigate();
   const [role, setRole] = useState(defaultRole); // 'user', 'kabadi', 'admin'
-  const [view, setView] = useState('login'); // 'login' or 'signup'
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [view, setView] = useState("login"); // 'login' or 'signup'
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,15 +82,15 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
     if (!db || !userEmail) return null;
     try {
       // Query all users with this email
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', userEmail));
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", userEmail));
       const snapshot = await getDocs(q);
-      
+
       if (!snapshot.empty) {
         for (const docSnap of snapshot.docs) {
-          const existingRole = (docSnap.data().role || 'user').toLowerCase();
+          const existingRole = (docSnap.data().role || "user").toLowerCase();
           const attempted = attemptedRole.toLowerCase();
-          
+
           // If the existing role doesn't match the attempted role, block it
           if (existingRole !== attempted) {
             return existingRole;
@@ -59,7 +99,7 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
       }
       return null; // No conflict — either new user or same role
     } catch (err) {
-      console.error('Role exclusivity check failed:', err);
+      console.error("Role exclusivity check failed:", err);
       return null; // Fail open — let the normal auth flow handle it
     }
   };
@@ -67,9 +107,9 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    
+
     if (!email || !password) {
-      setErrors({ general: 'Email and password are required' });
+      setErrors({ general: "Email and password are required" });
       return;
     }
 
@@ -81,41 +121,69 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
         const conflictLabel = ROLE_LABELS[conflictingRole] || conflictingRole;
         const attemptedLabel = ROLE_LABELS[role] || role;
         setErrors({
-          general: `⚠️ This email is already registered as "${conflictLabel}". You cannot sign in as "${attemptedLabel}" with the same email. Please use a different email address, or login from the correct portal.`
+          general: `⚠️ This email is already registered as "${conflictLabel}". You cannot sign in as "${attemptedLabel}" with the same email. Please use a different email address, or login from the correct portal.`,
         });
         setIsLoading(false);
         return;
       }
 
       let userCredential;
-      if (view === 'signup') {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (view === "signup") {
+        const selectedAuth = getAuthByRole();
+
+        userCredential = await createUserWithEmailAndPassword(
+          selectedAuth,
+          email,
+          password,
+        );
       } else {
         try {
-          userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const selectedAuth = getAuthByRole();
+
+          userCredential = await signInWithEmailAndPassword(
+            selectedAuth,
+            email,
+            password,
+          );
         } catch (error) {
           // If it's the demo account and it doesn't exist, auto-create it
-          if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password && 
-             (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          if (
+            email === DEMO_CREDENTIALS.email &&
+            password === DEMO_CREDENTIALS.password &&
+            (error.code === "auth/user-not-found" ||
+              error.code === "auth/invalid-credential")
+          ) {
+            const selectedAuth = getAuthByRole();
+
+            userCredential = await createUserWithEmailAndPassword(
+              selectedAuth,
+              email,
+              password,
+            );
           } else {
             throw error;
           }
         }
       }
       await syncUser(userCredential.user);
-      
+
       // Navigate to correct dashboard based on role
-      localStorage.setItem('token', await userCredential.user.getIdToken());
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'kabadi') navigate('/Kabadi');
-      else navigate('/dashboard');
+      localStorage.setItem("token", await userCredential.user.getIdToken());
+      if (role === "admin") navigate("/admin");
+      else if (role === "kabadi") navigate("/Kabadi");
+      else navigate("/dashboard");
     } catch (error) {
       // Sign out the user if auth succeeded but role check failed post-creation
-      if (auth.currentUser) {
-        try { await auth.signOut(); } catch (_) {}
+      const selectedAuth = getAuthByRole();
+
+      if (selectedAuth.currentUser) {
+        try {
+          await selectedAuth.signOut();
+        } catch (_) {}
       }
-      setErrors({ general: error.message || 'Authentication failed. Please try again.' });
+      setErrors({
+        general: error.message || "Authentication failed. Please try again.",
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -129,75 +197,80 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
    */
   const syncUser = async (user) => {
     if (!db) return;
-    const userRef = doc(db, 'users', user.uid);
+    const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
-    
+
     const userData = {
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName || 'User',
-      lastLogin: serverTimestamp()
+      displayName: user.displayName || "User",
+      lastLogin: serverTimestamp(),
     };
 
     if (!snap.exists()) {
       // New user — register with the selected role (locked permanently)
       await setDoc(userRef, {
         ...userData,
-        role: role || 'user',
-        isAdmin: role === 'admin',
-        isPartner: role === 'kabadi',
-        createdAt: serverTimestamp()
+        role: role || "user",
+        isAdmin: role === "admin",
+        isPartner: role === "kabadi",
+        createdAt: serverTimestamp(),
       });
     } else {
       // Existing user — enforce role match, NEVER upgrade
-      const existingRole = (snap.data().role || 'user').toLowerCase();
+      const existingRole = (snap.data().role || "user").toLowerCase();
       const attemptedRole = role.toLowerCase();
-      
+
       if (existingRole !== attemptedRole) {
         // Sign them out immediately — this should have been caught earlier but is a safety net
-        await auth.signOut();
+        const selectedAuth = getAuthByRole();
+        await selectedAuth.signOut();
         throw new Error(
           `This account is registered as "${ROLE_LABELS[existingRole] || existingRole}". ` +
-          `You cannot access the ${ROLE_LABELS[attemptedRole] || attemptedRole} portal. ` +
-          `Please use a different email or login from the correct portal.`
+            `You cannot access the ${ROLE_LABELS[attemptedRole] || attemptedRole} portal. ` +
+            `Please use a different email or login from the correct portal.`,
         );
       }
-      
+
       // Same role — just update lastLogin
-      await setDoc(userRef, { ...snap.data(), lastLogin: serverTimestamp() }, { merge: true });
+      await setDoc(
+        userRef,
+        { ...snap.data(), lastLogin: serverTimestamp() },
+        { merge: true },
+      );
     }
     // Small buffer to ensure Firestore propagation before navigation
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   };
 
   const getRoleConfig = () => {
     switch (role) {
-      case 'admin':
+      case "admin":
         return {
-          title: 'Admin Portal',
-          subtitle: 'Management & Analytics Control',
-          primary: '#5D4037',
-          secondary: '#795548',
-          bg: 'from-[#5D4037] to-[#8D6E63]',
-          icon: Shield
+          title: "Admin Portal",
+          subtitle: "Management & Analytics Control",
+          primary: "#5D4037",
+          secondary: "#795548",
+          bg: "from-[#5D4037] to-[#8D6E63]",
+          icon: Shield,
         };
-      case 'kabadi':
+      case "kabadi":
         return {
-          title: 'Partner Portal',
-          subtitle: 'Driver & Logistics Access',
-          primary: '#1976D2',
-          secondary: '#2196F3',
-          bg: 'from-[#1976D2] to-[#64B5F6]',
-          icon: Truck
+          title: "Partner Portal",
+          subtitle: "Driver & Logistics Access",
+          primary: "#1976D2",
+          secondary: "#2196F3",
+          bg: "from-[#1976D2] to-[#64B5F6]",
+          icon: Truck,
         };
       default:
         return {
-          title: 'Welcome Back',
-          subtitle: 'Log in to your Kabad Becho account',
-          primary: '#2E7D32',
-          secondary: '#66BB6A',
-          bg: 'from-[#66BB6A] to-[#AED581]',
-          icon: Recycle
+          title: "Welcome Back",
+          subtitle: "Log in to your Kabad Becho account",
+          primary: "#2E7D32",
+          secondary: "#66BB6A",
+          bg: "from-[#66BB6A] to-[#AED581]",
+          icon: Recycle,
         };
     }
   };
@@ -209,38 +282,48 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
     setIsLoading(true);
     setErrors({});
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      
+      const selectedAuth = getAuthByRole();
+
+      const result = await signInWithPopup(selectedAuth, googleProvider);
+
       // ─── ROLE EXCLUSIVITY: Check after Google popup (we now have the email) ───
-      const conflictingRole = await checkRoleExclusivity(result.user.email, role);
+      const conflictingRole = await checkRoleExclusivity(
+        result.user.email,
+        role,
+      );
       if (conflictingRole) {
         await auth.signOut(); // Sign out immediately
         const conflictLabel = ROLE_LABELS[conflictingRole] || conflictingRole;
         const attemptedLabel = ROLE_LABELS[role] || role;
         setErrors({
-          general: `⚠️ This Google account is already registered as "${conflictLabel}". You cannot sign in as "${attemptedLabel}" with the same email. Please use a different Google account.`
+          general: `⚠️ This Google account is already registered as "${conflictLabel}". You cannot sign in as "${attemptedLabel}" with the same email. Please use a different Google account.`,
         });
         setIsLoading(false);
         return;
       }
-      
+
       await syncUser(result.user);
-      
+
       // Navigate based on role
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'kabadi') navigate('/Kabadi');
-      else navigate('/dashboard');
+      if (role === "admin") navigate("/admin");
+      else if (role === "kabadi") navigate("/Kabadi");
+      else navigate("/dashboard");
     } catch (error) {
-      if (auth.currentUser) {
-        try { await auth.signOut(); } catch (_) {}
+      const selectedAuth = getAuthByRole();
+
+      if (selectedAuth.currentUser) {
+        try {
+          await selectedAuth.signOut();
+        } catch (_) {}
       }
-      setErrors({ general: error.message || 'Google sign-in failed. Please try again.' });
+      setErrors({
+        general: error.message || "Google sign-in failed. Please try again.",
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-[#F1F8E9] flex items-center justify-center p-4 pt-28 relative overflow-hidden">
@@ -252,56 +335,74 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-in-up">
-          {/* Role Switcher */}
-          <div className="flex justify-center gap-2 mb-8 p-1.5 bg-gray-100 rounded-2xl w-full max-w-xs mx-auto">
-            {[
-              { id: 'user', label: 'Customer', icon: UserCircle },
-              { id: 'kabadi', label: 'Partner', icon: Truck },
-              { id: 'admin', label: 'Admin', icon: Shield }
-            ].map(r => (
-              <button
-                key={r.id}
-                onClick={() => { setRole(r.id); setErrors({}); }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  role === r.id 
-                    ? 'bg-white text-[#2E7D32] shadow-sm scale-105' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <r.icon size={16} />
-                <span>{r.label}</span>
-              </button>
-            ))}
-          </div>
+        {/* Role Switcher */}
+        <div className="flex justify-center gap-2 mb-8 p-1.5 bg-gray-100 rounded-2xl w-full max-w-xs mx-auto">
+          {[
+            { id: "user", label: "Customer", icon: UserCircle },
+            { id: "kabadi", label: "Partner", icon: Truck },
+            { id: "admin", label: "Admin", icon: Shield },
+          ].map((r) => (
+            <button
+              key={r.id}
+              onClick={() => {
+                setRole(r.id);
+                setErrors({});
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                role === r.id
+                  ? "bg-white text-[#2E7D32] shadow-sm scale-105"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}>
+              <r.icon size={16} />
+              <span>{r.label}</span>
+            </button>
+          ))}
+        </div>
 
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 p-8 sm:p-10 relative overflow-hidden">
-
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 p-8 sm:p-10 relative overflow-hidden">
           {/* Top Decorative Line */}
-          <div className={`absolute top-0 left-0 w-full h-2 transition-colors duration-500`} style={{ backgroundColor: config.primary }}></div>
+          <div
+            className={`absolute top-0 left-0 w-full h-2 transition-colors duration-500`}
+            style={{ backgroundColor: config.primary }}></div>
 
           {/* Subtle Leaf Decoration */}
-          <Leaf className="absolute -top-6 -right-6 text-[#E8F5E9] transform rotate-12" size={120} />
+          <Leaf
+            className="absolute -top-6 -right-6 text-[#E8F5E9] transform rotate-12"
+            size={120}
+          />
 
           {/* Header */}
           <div className="text-center mb-10 relative">
-            <div 
+            <div
               className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6 shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-500"
-              style={{ background: `linear-gradient(135deg, ${config.primary}, ${config.secondary})`, boxShadow: `0 10px 20px -5px ${config.primary}40` }}
-            >
+              style={{
+                background: `linear-gradient(135deg, ${config.primary}, ${config.secondary})`,
+                boxShadow: `0 10px 20px -5px ${config.primary}40`,
+              }}>
               <RoleIcon className="text-white drop-shadow-md" size={40} />
             </div>
-            <h2 className="text-3xl font-extrabold mb-2 tracking-tight transition-colors duration-500" style={{ color: config.primary }}>
-              {view === 'login' ? config.title : `Join as ${role === 'user' ? 'Customer' : role === 'kabadi' ? 'Partner' : 'Admin'}`}
+            <h2
+              className="text-3xl font-extrabold mb-2 tracking-tight transition-colors duration-500"
+              style={{ color: config.primary }}>
+              {view === "login"
+                ? config.title
+                : `Join as ${role === "user" ? "Customer" : role === "kabadi" ? "Partner" : "Admin"}`}
             </h2>
             <p className="text-gray-500 font-medium">
-              {view === 'login' ? config.subtitle : 'Join the green revolution today'}
+              {view === "login"
+                ? config.subtitle
+                : "Join the green revolution today"}
             </p>
           </div>
 
           {/* Role Exclusivity Warning Banner */}
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium flex items-start gap-2">
             <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-            <span>Each email can only be registered under <strong>one role</strong> (Customer, Partner, or Admin). You cannot switch roles with the same email.</span>
+            <span>
+              Each email can only be registered under <strong>one role</strong>{" "}
+              (Customer, Partner, or Admin). You cannot switch roles with the
+              same email.
+            </span>
           </div>
 
           {errors.general && (
@@ -310,33 +411,38 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
             </div>
           )}
 
-
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Input */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-[#558B2F] ml-1">Email Address</label>
-              <div className={`
+              <label className="text-sm font-bold text-[#558B2F] ml-1">
+                Email Address
+              </label>
+              <div
+                className={`
                 relative group transition-all duration-300 rounded-xl
-                ${focusedInput === 'email' ? 'shadow-[0_0_0_4px_rgba(102,187,106,0.2)]' : ''}
+                ${focusedInput === "email" ? "shadow-[0_0_0_4px_rgba(102,187,106,0.2)]" : ""}
               `}>
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className={`transition-colors duration-300 ${focusedInput === 'email' ? 'text-[#66BB6A]' : 'text-gray-400'}`} size={20} />
+                  <Mail
+                    className={`transition-colors duration-300 ${focusedInput === "email" ? "text-[#66BB6A]" : "text-gray-400"}`}
+                    size={20}
+                  />
                 </div>
                 <input
                   type="email"
                   value={email}
-                  onFocus={() => setFocusedInput('email')}
+                  onFocus={() => setFocusedInput("email")}
                   onBlur={() => setFocusedInput(null)}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: '' });
+                    if (errors.email) setErrors({ ...errors, email: "" });
                   }}
                   placeholder="name@example.com"
                   className={`
                     w-full pl-12 pr-4 py-4 bg-gray-50 border-2 rounded-xl outline-none transition-all duration-300 font-medium text-gray-700 placeholder-gray-400
-                    ${errors.email ? 'border-red-400 bg-red-50' : 'border-gray-100 hover:border-gray-200'}
-                    ${focusedInput === 'email' && !errors.email ? 'border-[#66BB6A] bg-white' : ''}
+                    ${errors.email ? "border-red-400 bg-red-50" : "border-gray-100 hover:border-gray-200"}
+                    ${focusedInput === "email" && !errors.email ? "border-[#66BB6A] bg-white" : ""}
                   `}
                 />
               </div>
@@ -349,35 +455,40 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
 
             {/* Password Input */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-[#558B2F] ml-1">Password</label>
-              <div className={`
+              <label className="text-sm font-bold text-[#558B2F] ml-1">
+                Password
+              </label>
+              <div
+                className={`
                 relative group transition-all duration-300 rounded-xl
-                ${focusedInput === 'password' ? 'shadow-[0_0_0_4px_rgba(102,187,106,0.2)]' : ''}
+                ${focusedInput === "password" ? "shadow-[0_0_0_4px_rgba(102,187,106,0.2)]" : ""}
               `}>
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className={`transition-colors duration-300 ${focusedInput === 'password' ? 'text-[#66BB6A]' : 'text-gray-400'}`} size={20} />
+                  <Lock
+                    className={`transition-colors duration-300 ${focusedInput === "password" ? "text-[#66BB6A]" : "text-gray-400"}`}
+                    size={20}
+                  />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
-                  onFocus={() => setFocusedInput('password')}
+                  onFocus={() => setFocusedInput("password")}
                   onBlur={() => setFocusedInput(null)}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (errors.password) setErrors({ ...errors, password: '' });
+                    if (errors.password) setErrors({ ...errors, password: "" });
                   }}
                   placeholder="Enter your password"
                   className={`
                     w-full pl-12 pr-12 py-4 bg-gray-50 border-2 rounded-xl outline-none transition-all duration-300 font-medium text-gray-700 placeholder-gray-400
-                    ${errors.password ? 'border-red-400 bg-red-50' : 'border-gray-100 hover:border-gray-200'}
-                    ${focusedInput === 'password' && !errors.password ? 'border-[#66BB6A] bg-white' : ''}
+                    ${errors.password ? "border-red-400 bg-red-50" : "border-gray-100 hover:border-gray-200"}
+                    ${focusedInput === "password" && !errors.password ? "border-[#66BB6A] bg-white" : ""}
                   `}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A] transition-colors duration-300 cursor-pointer"
-                >
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A] transition-colors duration-300 cursor-pointer">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
@@ -391,11 +502,17 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
             {/* Options */}
             <div className="flex items-center justify-between pt-2">
               <label className="flex items-center cursor-pointer group select-none">
-                <div className={`
+                <div
+                  className={`
                   w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200
-                  ${rememberMe ? 'bg-[#66BB6A] border-[#66BB6A]' : 'border-gray-300 bg-white group-hover:border-[#66BB6A]'}
+                  ${rememberMe ? "bg-[#66BB6A] border-[#66BB6A]" : "border-gray-300 bg-white group-hover:border-[#66BB6A]"}
                 `}>
-                  {rememberMe && <ArrowRight size={12} className="text-white transform -rotate-45" />}
+                  {rememberMe && (
+                    <ArrowRight
+                      size={12}
+                      className="text-white transform -rotate-45"
+                    />
+                  )}
                 </div>
                 <input
                   type="checkbox"
@@ -409,8 +526,7 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
               </label>
               <button
                 type="button"
-                className="text-sm text-[#66BB6A] hover:text-[#2E7D32] font-bold transition-colors"
-              >
+                className="text-sm text-[#66BB6A] hover:text-[#2E7D32] font-bold transition-colors">
                 Forgot Password?
               </button>
             </div>
@@ -419,17 +535,26 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
               type="submit"
               disabled={isLoading}
               className="w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center space-x-2 relative overflow-hidden group"
-              style={{ background: `linear-gradient(135deg, ${config.primary}, ${config.secondary})`, boxShadow: `0 10px 20px -5px ${config.primary}50` }}
-            >
+              style={{
+                background: `linear-gradient(135deg, ${config.primary}, ${config.secondary})`,
+                boxShadow: `0 10px 20px -5px ${config.primary}50`,
+              }}>
               {isLoading ? (
                 <>
                   <Loader2 className="animate-spin" size={24} />
-                  <span>{view === 'login' ? 'Logging In...' : 'Joining...'}</span>
+                  <span>
+                    {view === "login" ? "Logging In..." : "Joining..."}
+                  </span>
                 </>
               ) : (
                 <>
-                  <span className="relative z-10">{view === 'login' ? 'Sign In' : 'Create Account'}</span>
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform relative z-10" size={20} />
+                  <span className="relative z-10">
+                    {view === "login" ? "Sign In" : "Create Account"}
+                  </span>
+                  <ArrowRight
+                    className="group-hover:translate-x-1 transition-transform relative z-10"
+                    size={20}
+                  />
                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </>
               )}
@@ -442,39 +567,54 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
               <div className="w-full border-t border-gray-100"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="px-4 bg-white text-xs font-semibold text-gray-400 uppercase tracking-widest">Or continue with</span>
+              <span className="px-4 bg-white text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                Or continue with
+              </span>
             </div>
           </div>
 
           {/* Social Buttons */}
           <div className="grid grid-cols-2 gap-4">
-            <button 
+            <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 group"
-            >
-              <Chrome size={20} className="text-[#4285F4] group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-semibold text-gray-600">Google</span>
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 group">
+              <Chrome
+                size={20}
+                className="text-[#4285F4] group-hover:scale-110 transition-transform"
+              />
+              <span className="text-sm font-semibold text-gray-600">
+                Google
+              </span>
             </button>
             <button className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 group">
-              <Phone size={20} className="text-[#66BB6A] group-hover:scale-110 transition-transform" />
+              <Phone
+                size={20}
+                className="text-[#66BB6A] group-hover:scale-110 transition-transform"
+              />
               <span className="text-sm font-semibold text-gray-600">Phone</span>
             </button>
           </div>
 
           {/* Sign Up Link */}
           <p className="text-center mt-8 text-gray-500 font-medium">
-            {view === 'login' ? (
+            {view === "login" ? (
               <>
-                Don't have an account?{' '}
-                <button onClick={() => setView('signup')} className="text-[#66BB6A] hover:text-[#2E7D32] font-bold hover:underline transition-all cursor-pointer" style={{ color: config.primary }}>
+                Don't have an account?{" "}
+                <button
+                  onClick={() => setView("signup")}
+                  className="text-[#66BB6A] hover:text-[#2E7D32] font-bold hover:underline transition-all cursor-pointer"
+                  style={{ color: config.primary }}>
                   Create an account
                 </button>
               </>
             ) : (
               <>
-                Already have an account?{' '}
-                <button onClick={() => setView('login')} className="text-[#66BB6A] hover:text-[#2E7D32] font-bold hover:underline transition-all cursor-pointer" style={{ color: config.primary }}>
+                Already have an account?{" "}
+                <button
+                  onClick={() => setView("login")}
+                  className="text-[#66BB6A] hover:text-[#2E7D32] font-bold hover:underline transition-all cursor-pointer"
+                  style={{ color: config.primary }}>
                   Sign in
                 </button>
               </>
@@ -483,33 +623,44 @@ const KabadBechoLogin = ({ defaultRole = 'user' }) => {
 
           {/* Demo Credentials Card */}
           <div className="mt-8 p-4 bg-linear-to-br from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-lg" style={{ backgroundColor: config.primary }}>
-                  <Info size={16} className="text-white" />
-                </div>
-                <h3 className="text-sm font-bold text-gray-800">Demo Account Available</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className="p-1.5 rounded-lg"
+                style={{ backgroundColor: config.primary }}>
+                <Info size={16} className="text-white" />
               </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between items-center text-xs bg-white/50 p-2 rounded-lg border border-gray-100">
-                  <span className="text-gray-500">Email:</span>
-                  <span className="font-mono font-bold text-gray-700">{DEMO_CREDENTIALS.email}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs bg-white/50 p-2 rounded-lg border border-gray-100">
-                  <span className="text-gray-500">Pass:</span>
-                  <span className="font-mono font-bold text-gray-700">{DEMO_CREDENTIALS.password}</span>
-                </div>
+              <h3 className="text-sm font-bold text-gray-800">
+                Demo Account Available
+              </h3>
+            </div>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between items-center text-xs bg-white/50 p-2 rounded-lg border border-gray-100">
+                <span className="text-gray-500">Email:</span>
+                <span className="font-mono font-bold text-gray-700">
+                  {DEMO_CREDENTIALS.email}
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail(DEMO_CREDENTIALS.email);
-                  setPassword(DEMO_CREDENTIALS.password);
-                }}
-                className="w-full py-2 text-xs font-bold transition-all border rounded-lg"
-                style={{ color: config.primary, borderColor: config.primary + '30', backgroundColor: config.primary + '08' }}
-              >
-                Use Demo Credentials
-              </button>
+              <div className="flex justify-between items-center text-xs bg-white/50 p-2 rounded-lg border border-gray-100">
+                <span className="text-gray-500">Pass:</span>
+                <span className="font-mono font-bold text-gray-700">
+                  {DEMO_CREDENTIALS.password}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail(DEMO_CREDENTIALS.email);
+                setPassword(DEMO_CREDENTIALS.password);
+              }}
+              className="w-full py-2 text-xs font-bold transition-all border rounded-lg"
+              style={{
+                color: config.primary,
+                borderColor: config.primary + "30",
+                backgroundColor: config.primary + "08",
+              }}>
+              Use Demo Credentials
+            </button>
           </div>
         </div>
       </div>

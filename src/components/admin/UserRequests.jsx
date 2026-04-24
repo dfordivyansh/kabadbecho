@@ -4,7 +4,8 @@ import {
   Phone, User, Package, Clock, ChevronDown, Route as RouteIcon
 } from 'lucide-react';
 import RouteOptimizerModal from './RouteOptimizerModal';
-import { auth, db } from '../../firebase';
+import { adminAuth, db } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { geocodeAddress } from '../../utils/geocoder';
 
@@ -32,50 +33,21 @@ const UserRequests = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch real data from Firestore
-  useEffect(() => {
-    const user = auth.currentUser;
+useEffect(() => {
+  const unsubscribeAuth = onAuthStateChanged(adminAuth, (user) => {
     if (!user) return;
 
-    // Background geocoder for old orders with random coordinates
-    const geocodeOrders = async (orders) => {
-      for (const order of orders) {
-        // Check if coordinates look suspicious (near old fallback center)
-        const lat = order.location?.lat;
-        const lng = order.location?.lng;
-        const isFallback = (
-          !lat || !lng || 
-          (Math.abs(lat - 22.7411) < 0.001 && Math.abs(lng - 75.8355) < 0.001) ||
-          (Math.abs(lat - 22.7196) < 0.001 && Math.abs(lng - 75.8577) < 0.001)
-        );
-
-        if (order.address && (!order.locationGeocoded || isFallback)) {
-          try {
-            const coords = await geocodeAddress(order.address);
-            if (coords) {
-              await updateDoc(doc(db, "orders", order.id), {
-                location: { lat: coords.lat, lng: coords.lng },
-                locationGeocoded: true,
-                adminGeocodedAt: new Date().toISOString()
-              });
-              console.log(`Admin [FORCE]: Geocoded order ${order.id}: ${order.address} → [${coords.lat}, ${coords.lng}]`);
-            }
-          } catch (err) {
-            console.warn("Geocoding failed for", order.id, err);
-          }
-        }
-      }
-    };
-
     const q = query(collection(db, "orders"));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const orders = snapshot.docs.map(d => ({
         id: d.id,
         ...d.data()
       }));
+
       setRequests(orders);
       setIsLoading(false);
 
-      // Auto-geocode any orders missing real coordinates
       const needsGeo = orders.filter(o => o.address && !o.locationGeocoded);
       if (needsGeo.length > 0) {
         geocodeOrders(needsGeo);
@@ -86,7 +58,10 @@ const UserRequests = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  });
+
+  return () => unsubscribeAuth();
+}, []);
 
   const handleUpdateStatus = async (requestId, newStatus, extraData = {}) => {
     try {

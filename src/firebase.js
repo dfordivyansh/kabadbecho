@@ -16,12 +16,20 @@ const firebaseConfig = {
   measurementId: "G-KXWBN0C74T"
 };
 
-// 🚀 Init
-const app = initializeApp(firebaseConfig);
+// 🚀 MULTIPLE APP INSTANCES (IMPORTANT)
+const customerApp = initializeApp(firebaseConfig, "customerApp");
+const partnerApp = initializeApp(firebaseConfig, "partnerApp");
+const adminApp = initializeApp(firebaseConfig, "adminApp");
 
-// 🔥 Core
-const db = getFirestore(app);
-const auth = getAuth(app);
+// 🔥 Firestore (single instance enough)
+const db = getFirestore(customerApp);
+
+// 🔥 Separate Auth Instances
+const customerAuth = getAuth(customerApp);
+const partnerAuth = getAuth(partnerApp);
+const adminAuth = getAuth(adminApp);
+
+// 🔥 Google Provider
 const googleProvider = new GoogleAuthProvider();
 
 // 🌐 Optional (safe)
@@ -29,24 +37,25 @@ let analytics = null;
 let messaging = null;
 
 if (typeof window !== "undefined") {
-  // Analytics safe init
+  // Analytics
   isSupported().then((yes) => {
-    if (yes) analytics = getAnalytics(app);
+    if (yes) analytics = getAnalytics(customerApp);
   });
 
-  // Messaging safe init
+  // Messaging
   try {
-    messaging = getMessaging(app);
+    messaging = getMessaging(customerApp);
   } catch (e) {
     console.warn("Messaging init failed:", e);
   }
 }
 
-// 📦 Export
+// 📦 EXPORT
 export {
-  app,
   db,
-  auth,
+  customerAuth,
+  partnerAuth,
+  adminAuth,
   googleProvider,
   analytics,
   messaging

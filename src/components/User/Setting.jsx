@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { 
+import React, { useState, useEffect } from "react";
+import {
   User,
   Mail,
   Phone,
@@ -13,14 +13,14 @@ import {
   CheckCircle,
   LogOut,
   HelpCircle,
-  Settings
-} from 'lucide-react';
-import { auth, db } from '../../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+  Settings,
+} from "lucide-react";
+import { customerAuth, db } from "../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const KabadBechoSettings = () => {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -28,20 +28,20 @@ const KabadBechoSettings = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    alternatePhone: ''
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    alternatePhone: "",
   });
 
   const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [notifications, setNotifications] = useState({
@@ -50,43 +50,43 @@ const KabadBechoSettings = () => {
     pushNotifications: true,
     pickupReminders: true,
     promotionalEmails: false,
-    weeklyReport: true
+    weeklyReport: true,
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(customerAuth, async (user) => {
       if (!user) return;
 
-      if (user.email === 'demo@example.com') {
+      if (user.email === "demo@example.com") {
         setProfileData({
-          name: 'Rajesh Kumar',
-          email: 'rajesh.kumar@example.com',
-          phone: '9876543210',
-          address: '123 Green Street, Eco City',
-          city: 'Mumbai',
-          state: 'Maharashtra',
-          pincode: '400001',
-          alternatePhone: '9876543211'
+          name: "Rajesh Kumar",
+          email: "rajesh.kumar@example.com",
+          phone: "9876543210",
+          address: "123 Green Street, Eco City",
+          city: "Mumbai",
+          state: "Maharashtra",
+          pincode: "400001",
+          alternatePhone: "9876543211",
         });
         return;
       }
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          setProfileData(prev => ({
+          setProfileData((prev) => ({
             ...prev,
             ...data,
-            name: data.name || data.displayName || prev.name || '',
-            email: data.email || user.email || prev.email || ''
+            name: data.name || data.displayName || prev.name || "",
+            email: data.email || user.email || prev.email || "",
           }));
         } else {
           // Initialize with Auth data if Firestore doc doesn't exist
-          setProfileData(prev => ({
+          setProfileData((prev) => ({
             ...prev,
-            name: user.displayName || '',
-            email: user.email || ''
+            name: user.displayName || "",
+            email: user.email || "",
           }));
         }
       } catch (err) {
@@ -110,16 +110,16 @@ const KabadBechoSettings = () => {
   };
 
   const handleSave = async () => {
-    const user = auth.currentUser;
-    if (!user || user.email === 'demo@example.com') {
-       setSaveSuccess(true);
-       setTimeout(() => setSaveSuccess(false), 3000);
-       return;
+    const user = customerAuth.currentUser;
+    if (!user || user.email === "demo@example.com") {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      return;
     }
 
     setIsUpdating(true);
     try {
-      await setDoc(doc(db, 'users', user.uid), profileData, { merge: true });
+      await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
@@ -131,9 +131,9 @@ const KabadBechoSettings = () => {
   };
 
   const quickTabs = [
-    { id: 'profile', label: 'Profile', icon: <User size={20} /> },
-    { id: 'security', label: 'Security', icon: <Lock size={20} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={20} /> }
+    { id: "profile", label: "Profile", icon: <User size={20} /> },
+    { id: "security", label: "Security", icon: <Lock size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
   ];
 
   return (
@@ -152,7 +152,9 @@ const KabadBechoSettings = () => {
             </div>
             <div>
               <h1 className="text-4xl sm:text-5xl font-bold mb-2">Settings</h1>
-              <p className="text-xl text-green-50">Manage your account preferences</p>
+              <p className="text-xl text-green-50">
+                Manage your account preferences
+              </p>
             </div>
           </div>
         </div>
@@ -163,13 +165,15 @@ const KabadBechoSettings = () => {
         <div className="fixed top-4 right-4 z-50 animate-slideIn">
           <div className="bg-white rounded-xl shadow-2xl p-4 flex items-center space-x-3 border-l-4 border-[#66BB6A]">
             <CheckCircle className="text-[#66BB6A]" size={24} />
-            <span className="text-gray-700 font-semibold">Settings saved successfully!</span>
+            <span className="text-gray-700 font-semibold">
+              Settings saved successfully!
+            </span>
           </div>
         </div>
       )}
       {/* Quick cards UI */}
       <div className="max-w-7xl mx-auto px-6 mt-10 grid md:grid-cols-3 gap-6">
-        {quickTabs.map(t => (
+        {quickTabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
@@ -177,9 +181,9 @@ const KabadBechoSettings = () => {
               activeTab === t.id
                 ? "bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white"
                 : "bg-white"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-3">{t.icon}
+            }`}>
+            <div className="flex items-center gap-3 mb-3">
+              {t.icon}
               <h3 className="font-bold text-lg">{t.label}</h3>
             </div>
             <p className="text-sm opacity-80">
@@ -196,32 +200,41 @@ const KabadBechoSettings = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-4 gap-8">
             {/* Sidebar */}
-            
 
             {/* Content Area */}
             <div className="lg:col-span-3">
               <div className="bg-white rounded-2xl shadow-lg p-8">
                 {/* Profile Settings */}
-                {activeTab === 'profile' && (
+                {activeTab === "profile" && (
                   <div className="space-y-8">
                     <div>
-                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">Profile Information</h2>
-                      <p className="text-gray-600">Update your personal details and contact information</p>
+                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">
+                        Profile Information
+                      </h2>
+                      <p className="text-gray-600">
+                        Update your personal details and contact information
+                      </p>
                     </div>
 
                     {/* Profile Picture */}
                     <div className="flex items-center space-x-6">
                       <div className="relative">
                         <div className="w-24 h-24 bg-linear-to-br from-[#66BB6A] to-[#4CAF50] rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                          {profileData.name?.[0] || profileData.email?.[0]?.toUpperCase() || 'U'}
+                          {profileData.name?.[0] ||
+                            profileData.email?.[0]?.toUpperCase() ||
+                            "U"}
                         </div>
                         <button className="absolute bottom-0 right-0 w-8 h-8 bg-white border-2 border-[#66BB6A] rounded-full flex items-center justify-center hover:bg-[#E8F5E9] transition-colors duration-300 shadow-md">
                           <Camera size={16} className="text-[#66BB6A]" />
                         </button>
                       </div>
                       <div>
-                        <h3 className="font-bold text-[#5D4037] text-lg">{profileData.name}</h3>
-                        <p className="text-gray-600 text-sm">{profileData.email}</p>
+                        <h3 className="font-bold text-[#5D4037] text-lg">
+                          {profileData.name}
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          {profileData.email}
+                        </p>
                         <button className="text-[#66BB6A] text-sm font-semibold hover:text-[#4CAF50] mt-1">
                           Change Profile Picture
                         </button>
@@ -321,7 +334,9 @@ const KabadBechoSettings = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">City</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          City
+                        </label>
                         <input
                           type="text"
                           name="city"
@@ -332,7 +347,9 @@ const KabadBechoSettings = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">State</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          State
+                        </label>
                         <input
                           type="text"
                           name="state"
@@ -343,7 +360,9 @@ const KabadBechoSettings = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">Pincode</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          Pincode
+                        </label>
                         <input
                           type="text"
                           name="pincode"
@@ -356,8 +375,7 @@ const KabadBechoSettings = () => {
 
                     <button
                       onClick={handleSave}
-                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2"
-                    >
+                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2">
                       <Save size={22} />
                       <span>Save Changes</span>
                     </button>
@@ -365,22 +383,28 @@ const KabadBechoSettings = () => {
                 )}
 
                 {/* Security Settings */}
-                {activeTab === 'security' && (
+                {activeTab === "security" && (
                   <div className="space-y-8">
                     <div>
-                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">Security Settings</h2>
-                      <p className="text-gray-600">Manage your password and account security</p>
+                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">
+                        Security Settings
+                      </h2>
+                      <p className="text-gray-600">
+                        Manage your password and account security
+                      </p>
                     </div>
 
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">Current Password</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          Current Password
+                        </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Lock className="text-gray-400" size={20} />
                           </div>
                           <input
-                            type={showPassword ? 'text' : 'password'}
+                            type={showPassword ? "text" : "password"}
                             name="currentPassword"
                             value={passwordData.currentPassword}
                             onChange={handlePasswordChange}
@@ -389,21 +413,26 @@ const KabadBechoSettings = () => {
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]"
-                          >
-                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]">
+                            {showPassword ? (
+                              <EyeOff size={20} />
+                            ) : (
+                              <Eye size={20} />
+                            )}
                           </button>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">New Password</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          New Password
+                        </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Lock className="text-gray-400" size={20} />
                           </div>
                           <input
-                            type={showNewPassword ? 'text' : 'password'}
+                            type={showNewPassword ? "text" : "password"}
                             name="newPassword"
                             value={passwordData.newPassword}
                             onChange={handlePasswordChange}
@@ -412,21 +441,26 @@ const KabadBechoSettings = () => {
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]"
-                          >
-                            {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]">
+                            {showNewPassword ? (
+                              <EyeOff size={20} />
+                            ) : (
+                              <Eye size={20} />
+                            )}
                           </button>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">Confirm New Password</label>
+                        <label className="block text-sm font-semibold text-[#5D4037] mb-2">
+                          Confirm New Password
+                        </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Lock className="text-gray-400" size={20} />
                           </div>
                           <input
-                            type={showConfirmPassword ? 'text' : 'password'}
+                            type={showConfirmPassword ? "text" : "password"}
                             name="confirmPassword"
                             value={passwordData.confirmPassword}
                             onChange={handlePasswordChange}
@@ -434,17 +468,24 @@ const KabadBechoSettings = () => {
                           />
                           <button
                             type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]"
-                          >
-                            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#66BB6A]">
+                            {showConfirmPassword ? (
+                              <EyeOff size={20} />
+                            ) : (
+                              <Eye size={20} />
+                            )}
                           </button>
                         </div>
                       </div>
                     </div>
 
                     <div className="bg-[#E8F5E9] p-6 rounded-xl border-l-4 border-[#66BB6A]">
-                      <h3 className="font-bold text-[#5D4037] mb-2">Password Requirements</h3>
+                      <h3 className="font-bold text-[#5D4037] mb-2">
+                        Password Requirements
+                      </h3>
                       <ul className="space-y-2 text-sm text-gray-700">
                         <li className="flex items-center space-x-2">
                           <CheckCircle className="text-[#66BB6A]" size={16} />
@@ -463,18 +504,23 @@ const KabadBechoSettings = () => {
 
                     <button
                       onClick={handleSave}
-                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2"
-                    >
+                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2">
                       <Save size={22} />
                       <span>Update Password</span>
                     </button>
 
                     <div className="pt-8 border-t">
-                      <h3 className="text-xl font-bold text-[#5D4037] mb-4">Two-Factor Authentication</h3>
+                      <h3 className="text-xl font-bold text-[#5D4037] mb-4">
+                        Two-Factor Authentication
+                      </h3>
                       <div className="flex items-center justify-between p-6 bg-linear-to-r from-[#E8F5E9] to-white rounded-xl border border-gray-100">
                         <div>
-                          <h4 className="font-semibold text-[#5D4037] mb-1">Enable 2FA</h4>
-                          <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                          <h4 className="font-semibold text-[#5D4037] mb-1">
+                            Enable 2FA
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Add an extra layer of security to your account
+                          </p>
                         </div>
                         <button className="px-6 py-2 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300">
                           Enable
@@ -485,36 +531,72 @@ const KabadBechoSettings = () => {
                 )}
 
                 {/* Notification Settings */}
-                {activeTab === 'notifications' && (
+                {activeTab === "notifications" && (
                   <div className="space-y-8">
                     <div>
-                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">Notification Preferences</h2>
-                      <p className="text-gray-600">Choose how you want to receive updates</p>
+                      <h2 className="text-3xl font-bold text-[#5D4037] mb-2">
+                        Notification Preferences
+                      </h2>
+                      <p className="text-gray-600">
+                        Choose how you want to receive updates
+                      </p>
                     </div>
 
                     <div className="space-y-4">
                       {[
-                        { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
-                        { key: 'smsNotifications', label: 'SMS Notifications', desc: 'Receive SMS alerts for pickups' },
-                        { key: 'pushNotifications', label: 'Push Notifications', desc: 'Browser and mobile push notifications' },
-                        { key: 'pickupReminders', label: 'Pickup Reminders', desc: 'Get reminded before scheduled pickup' },
-                        { key: 'promotionalEmails', label: 'Promotional Emails', desc: 'Receive offers and promotional content' },
-                        { key: 'weeklyReport', label: 'Weekly Report', desc: 'Get weekly summary of your activities' }
+                        {
+                          key: "emailNotifications",
+                          label: "Email Notifications",
+                          desc: "Receive notifications via email",
+                        },
+                        {
+                          key: "smsNotifications",
+                          label: "SMS Notifications",
+                          desc: "Receive SMS alerts for pickups",
+                        },
+                        {
+                          key: "pushNotifications",
+                          label: "Push Notifications",
+                          desc: "Browser and mobile push notifications",
+                        },
+                        {
+                          key: "pickupReminders",
+                          label: "Pickup Reminders",
+                          desc: "Get reminded before scheduled pickup",
+                        },
+                        {
+                          key: "promotionalEmails",
+                          label: "Promotional Emails",
+                          desc: "Receive offers and promotional content",
+                        },
+                        {
+                          key: "weeklyReport",
+                          label: "Weekly Report",
+                          desc: "Get weekly summary of your activities",
+                        },
                       ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between p-6 bg-linear-to-r from-white to-[#E8F5E9] rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300">
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between p-6 bg-linear-to-r from-white to-[#E8F5E9] rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-[#5D4037] mb-1">{item.label}</h4>
+                            <h4 className="font-semibold text-[#5D4037] mb-1">
+                              {item.label}
+                            </h4>
                             <p className="text-sm text-gray-600">{item.desc}</p>
                           </div>
                           <button
                             onClick={() => handleNotificationToggle(item.key)}
                             className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${
-                              notifications[item.key] ? 'bg-linear-to-r from-[#66BB6A] to-[#4CAF50]' : 'bg-gray-300'
-                            }`}
-                          >
-                            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                              notifications[item.key] ? 'translate-x-8' : 'translate-x-1'
-                            }`}></div>
+                              notifications[item.key]
+                                ? "bg-linear-to-r from-[#66BB6A] to-[#4CAF50]"
+                                : "bg-gray-300"
+                            }`}>
+                            <div
+                              className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                                notifications[item.key]
+                                  ? "translate-x-8"
+                                  : "translate-x-1"
+                              }`}></div>
                           </button>
                         </div>
                       ))}
@@ -522,8 +604,7 @@ const KabadBechoSettings = () => {
 
                     <button
                       onClick={handleSave}
-                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2"
-                    >
+                      className="w-full py-4 bg-linear-to-r from-[#66BB6A] to-[#4CAF50] text-white font-bold text-lg rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center space-x-2">
                       <Save size={22} />
                       <span>Save Preferences</span>
                     </button>

@@ -10,11 +10,12 @@ import SchedulePickup from "./pages/SchedulePickup.jsx";
 import Login from "./components/Login.jsx";
 import UserLayout from "./components/User/UserLayout.jsx";
 import Dashboard from "./components/User/Dashboard.jsx";
-import Pickup from "./components/User/pickup.jsx";
+import Pickup from "./components/User/Pickup.jsx";
 import Setting from "./components/User/Setting.jsx";
-import UserService from "./components/User/UserService.jsx"
+import UserService from "./components/User/UserService.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Contact from "./pages/Contact.jsx";
+import ScrollToTop from "./components/ScrollToTop.jsx";
 
 // Admin
 import AdminLayout from "./components/admin/AdminLayout.jsx";
@@ -23,38 +24,67 @@ import UserRequests from "./components/admin/UserRequests.jsx";
 import UserManagement from "./components/admin/UserManagement.jsx";
 import PaymentsPricing from "./components/admin/PaymentsPricing.jsx";
 import ComplaintsSupport from "./components/admin/ComplaintsSupport.jsx";
-import ScrollToTop from "./components/ScrollToTop.jsx";
+
+// Partner
 import Kabadi from "./components/Kabadi.jsx";
 
 const App = () => {
   return (
     <Router>
-      <ScrollToTop/>
+      <ScrollToTop />
+
       <Routes>
-        {/* Public routes */}
+
+        {/* ================= PUBLIC ROUTES ================= */}
         <Route path="/" element={<><Navbar /><Home /></>} />
         <Route path="/services" element={<><Navbar /><Services /></>} />
         <Route path="/about" element={<><Navbar /><AboutUs /></>} />
         <Route path="/contact" element={<><Navbar /><Contact /></>} />
-        <Route path="/login" element={<><Navbar /><Login /></>} />
+
+        {/* LOGIN ROUTES */}
+        <Route path="/login" element={<><Navbar /><Login defaultRole="user" /></>} />
         <Route path="/admin/login" element={<><Navbar /><Login defaultRole="admin" /></>} />
         <Route path="/kabadi/login" element={<><Navbar /><Login defaultRole="kabadi" /></>} />
-        <Route path="/Kabadi" element={<ProtectedRoute requiredRole="kabadi"><Kabadi/></ProtectedRoute>}></Route>
-        <Route path="/book-pickup" element={<><BookPickup /></>} />
-        <Route path="/schedule-pickup" element={<><SchedulePickup /></>} />
 
-        {/* USER DASHBOARD (nested) */}
-        <Route path="/dashboard" element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+        {/* BOOK PICKUP */}
+        <Route path="/book-pickup" element={<><Navbar /><BookPickup /></>} />
+        <Route path="/schedule-pickup" element={<><Navbar /><SchedulePickup /></>} />
+
+        {/* ================= USER DASHBOARD ================= */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="pickup" element={<Pickup />} />
-          <Route path="UserService" element={<UserService/>} />
+          <Route path="userservice" element={<UserService />} />
           <Route path="setting" element={<Setting />} />
-          <Route path="book-pickup" element={<BookPickup/>} />
+          <Route path="book-pickup" element={<BookPickup />} />
         </Route>
 
+        {/* ================= PARTNER ROUTE ================= */}
+        <Route
+          path="/kabadi"
+          element={
+            <ProtectedRoute requiredRole="kabadi">
+              <Kabadi />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* ADMIN routes */}
-        <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
+        {/* ================= ADMIN ROUTES ================= */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="/admin/analytics" replace />} />
           <Route path="analytics" element={<AnalyticsReports />} />
           <Route path="requests" element={<UserRequests />} />
@@ -62,6 +92,7 @@ const App = () => {
           <Route path="payments" element={<PaymentsPricing />} />
           <Route path="complaints" element={<ComplaintsSupport />} />
         </Route>
+
       </Routes>
     </Router>
   );

@@ -1,22 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { auth, db } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { customerAuth, adminAuth, partnerAuth, db } from "../firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-const ProtectedRoute = ({ children, requiredRole = 'user' }) => {
+const ProtectedRoute = ({ children, requiredRole = "user" }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
+  // 🔥 Decide which auth to use
+  const getAuthInstance = () => {
+    if (requiredRole === "admin") return adminAuth;
+    if (requiredRole === "kabadi") return partnerAuth;
+    return customerAuth;
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const authInstance = getAuthInstance();
+
+    const unsubscribe = onAuthStateChanged(authInstance, async (currentUser) => {
       if (!currentUser) {
-        // Correctly redirect based on which portal we are protecting
-        if (location.pathname.startsWith('/admin')) {
+        // 🔥 redirect based on role
+        if (requiredRole === "admin") {
           navigate("/admin/login", { replace: true });
-        } else if (location.pathname.startsWith('/Kabadi')) {
+        } else if (requiredRole === "kabadi") {
           navigate("/kabadi/login", { replace: true });
         } else {
           navigate("/login", { replace: true });
@@ -25,39 +35,43 @@ const ProtectedRoute = ({ children, requiredRole = 'user' }) => {
         return;
       }
 
-      // If user is logged in, check their role in Firestore
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const userRole = (userData.role || 'user').toLowerCase();
-          const targetRole = requiredRole.toLowerCase();
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
 
-          // STRICT ROLE CHECK — no cross-role access allowed
-          if (userRole !== targetRole) {
-            console.warn("Unauthorized role:", userRole, "expected:", targetRole);
-            // Sign them out to prevent stale sessions
-            await auth.signOut();
-            localStorage.removeItem('token');
-            if (location.pathname.startsWith('/admin')) navigate("/admin/login", { replace: true });
-            else if (location.pathname.startsWith('/Kabadi')) navigate("/kabadi/login", { replace: true });
-            else navigate("/login", { replace: true });
-            setLoading(false);
-            return;
-          }
-        } else {
-          // User doc doesn't exist — redirect to login
-          await auth.signOut();
-          localStorage.removeItem('token');
+        if (!userDoc.exists()) {
+          await signOut(authInstance);
           navigate("/login", { replace: true });
           setLoading(false);
           return;
         }
+
+        const userData = userDoc.data();
+        const userRole = (userData.role || "user").toLowerCase();
+        const targetRole = requiredRole.toLowerCase();
+
+        // 🔥 STRICT ROLE CHECK
+        if (userRole !== targetRole) {
+          console.warn("Unauthorized role:", userRole, "expected:", targetRole);
+
+          await signOut(authInstance);
+
+          if (targetRole === "admin") {
+            navigate("/admin/login", { replace: true });
+          } else if (targetRole === "kabadi") {
+            navigate("/kabadi/login", { replace: true });
+          } else {
+            navigate("/login", { replace: true });
+          }
+
+          setLoading(false);
+          return;
+        }
+
+        setUser(currentUser);
       } catch (err) {
         console.error("Auth check failed", err);
       }
 
-      setUser(currentUser);
       setLoading(false);
     });
 

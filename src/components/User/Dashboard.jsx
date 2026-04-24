@@ -8,20 +8,76 @@ import {
   ChevronLeft,
   ChevronRight,
   Award,
-  TrendingUp
+  TrendingUp,
 } from "lucide-react";
-import { auth, db } from "../../firebase";
+import { customerAuth, db } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 const SERVICE_HISTORY = [
-  { id: 101, date: "2023-10-25", type: "Paper & Cardboard", weight: "12 kg", amount: "₹144", status: "Completed", receipt: "REC-001" },
-  { id: 102, date: "2023-11-02", type: "Metal Scrap", weight: "5 kg", amount: "₹150", status: "Completed", receipt: "REC-002" },
-  { id: 103, date: "2023-11-10", type: "Plastic Waste", weight: "8 kg", amount: "₹80", status: "Completed", receipt: "REC-003" },
-  { id: 104, date: "2023-11-15", type: "Mixed E-Waste", weight: "2 kg", amount: "₹200", status: "Completed", receipt: "REC-004" },
-  { id: 105, date: "2023-11-22", type: "Old Books", weight: "15 kg", amount: "₹180", status: "Completed", receipt: "REC-005" },
-  { id: 106, date: "2023-12-01", type: "Glass Bottles", weight: "10 kg", amount: "₹50", status: "Completed", receipt: "REC-006" },
-  { id: 107, date: "2023-12-05", type: "Iron Scrap", weight: "20 kg", amount: "₹600", status: "Completed", receipt: "REC-007" }
+  {
+    id: 101,
+    date: "2023-10-25",
+    type: "Paper & Cardboard",
+    weight: "12 kg",
+    amount: "₹144",
+    status: "Completed",
+    receipt: "REC-001",
+  },
+  {
+    id: 102,
+    date: "2023-11-02",
+    type: "Metal Scrap",
+    weight: "5 kg",
+    amount: "₹150",
+    status: "Completed",
+    receipt: "REC-002",
+  },
+  {
+    id: 103,
+    date: "2023-11-10",
+    type: "Plastic Waste",
+    weight: "8 kg",
+    amount: "₹80",
+    status: "Completed",
+    receipt: "REC-003",
+  },
+  {
+    id: 104,
+    date: "2023-11-15",
+    type: "Mixed E-Waste",
+    weight: "2 kg",
+    amount: "₹200",
+    status: "Completed",
+    receipt: "REC-004",
+  },
+  {
+    id: 105,
+    date: "2023-11-22",
+    type: "Old Books",
+    weight: "15 kg",
+    amount: "₹180",
+    status: "Completed",
+    receipt: "REC-005",
+  },
+  {
+    id: 106,
+    date: "2023-12-01",
+    type: "Glass Bottles",
+    weight: "10 kg",
+    amount: "₹50",
+    status: "Completed",
+    receipt: "REC-006",
+  },
+  {
+    id: 107,
+    date: "2023-12-05",
+    type: "Iron Scrap",
+    weight: "20 kg",
+    amount: "₹600",
+    status: "Completed",
+    receipt: "REC-007",
+  },
 ];
 
 const Dashboard = () => {
@@ -31,7 +87,7 @@ const Dashboard = () => {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(customerAuth, (user) => {
       if (!user) {
         setIsLoading(false);
         return;
@@ -40,20 +96,24 @@ const Dashboard = () => {
       // Real-time Firestore query for other users
       const ordersRef = collection(db, "orders");
       const q = query(ordersRef, where("userId", "==", user.uid));
-      
-      const unsubscribeData = onSnapshot(q, (snapshot) => {
-        const orders = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        // Sort client-side to avoid needing a Firestore composite index
-        orders.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        setServiceHistory(orders);
-        setIsLoading(false);
-      }, (err) => {
-        console.warn("Firestore error in dashboard:", err);
-        setIsLoading(false);
-      });
+
+      const unsubscribeData = onSnapshot(
+        q,
+        (snapshot) => {
+          const orders = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          // Sort client-side to avoid needing a Firestore composite index
+          orders.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          setServiceHistory(orders);
+          setIsLoading(false);
+        },
+        (err) => {
+          console.warn("Firestore error in dashboard:", err);
+          setIsLoading(false);
+        },
+      );
 
       return () => unsubscribeData();
     });
@@ -62,21 +122,30 @@ const Dashboard = () => {
   }, []);
 
   // Calculate stats from serviceHistory
-  const stats = (serviceHistory || []).reduce((acc, item) => {
-    if (!item) return acc;
-    const amountStr = item.collectedAmount || item.amount || '0';
-    const weightStr = item.weight || '0';
-    const amount = parseInt(amountStr.toString().replace(/[^\d]/g, '')) || 0;
-    const weight = parseInt(weightStr.toString().replace(/[^\d]/g, '')) || 0;
-    return {
-      totalEarnings: acc.totalEarnings + amount,
-      totalWeight: acc.totalWeight + weight
-    };
-  }, { totalEarnings: 0, totalWeight: 0 });
+  const stats = (serviceHistory || []).reduce(
+    (acc, item) => {
+      if (!item) return acc;
+      const amountStr = item.collectedAmount || item.amount || "0";
+      const weightStr = item.weight || "0";
+      const amount = parseInt(amountStr.toString().replace(/[^\d]/g, "")) || 0;
+      const weight = parseInt(weightStr.toString().replace(/[^\d]/g, "")) || 0;
+      return {
+        totalEarnings: acc.totalEarnings + amount,
+        totalWeight: acc.totalWeight + weight,
+      };
+    },
+    { totalEarnings: 0, totalWeight: 0 },
+  );
 
-  const totalPages = Math.max(1, Math.ceil(serviceHistory.length / itemsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(serviceHistory.length / itemsPerPage),
+  );
   const indexOfLast = currentPage * itemsPerPage;
-  const currentItems = serviceHistory.slice(indexOfLast - itemsPerPage, indexOfLast);
+  const currentItems = serviceHistory.slice(
+    indexOfLast - itemsPerPage,
+    indexOfLast,
+  );
 
   const goalMax = 500;
   const goalProgress = Math.min((stats.totalWeight / goalMax) * 100, 100);
@@ -94,44 +163,62 @@ const Dashboard = () => {
   return (
     <>
       {/* HERO / STATS */}
-                <div className="bg-linear-to-br from-[#2E7D32] to-[#66BB6A] rounded-3xl p-8 text-white shadow-2xl shadow-green-900/10 mb-10 relative overflow-hidden group">
-
+      <div className="bg-linear-to-br from-[#2E7D32] to-[#66BB6A] rounded-3xl p-8 text-white shadow-2xl shadow-green-900/10 mb-10 relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none group-hover:scale-110 transition-transform duration-1000"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-900/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
 
         <div className="relative z-10 grid lg:grid-cols-2 gap-8 items-center">
           <div>
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold border border-white/10 flex items-center gap-1 mb-4">
-              <Award size={12} /> {stats.totalWeight > 100 ? "Gold Member" : "Eco Explorer"}
+              <Award size={12} />{" "}
+              {stats.totalWeight > 100 ? "Gold Member" : "Eco Explorer"}
             </span>
 
             <h1 className="text-3xl lg:text-5xl font-extrabold mb-4">
-              Hello, <span className="text-green-100">{auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Green Hero"}!</span> 🌱
+              Hello,{" "}
+              <span className="text-green-100">
+                {customerAuth.currentUser?.displayName ||
+                  customerAuth.currentUser?.email?.split("@")[0] ||
+                  "Green Hero"}
+              </span>{" "}
+              🌱{" "}
             </h1>
 
             <p className="text-green-50 text-lg max-w-lg mb-8">
-              Your recycling efforts {stats.totalWeight > 0 ? "are making a real difference." : "are about to start! Make your first pickup today."}
+              Your recycling efforts{" "}
+              {stats.totalWeight > 0
+                ? "are making a real difference."
+                : "are about to start! Make your first pickup today."}
             </p>
 
             <div className="bg-white/10 rounded-2xl p-5 border border-white/10 max-w-md">
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-green-100">Contribution Goal</span>
+                <span className="text-sm text-green-100">
+                  Contribution Goal
+                </span>
                 <span className="text-2xl font-bold">
-                  {stats.totalWeight} <span className="text-sm text-green-200">/ {goalMax} kg</span>
+                  {stats.totalWeight}{" "}
+                  <span className="text-sm text-green-200">/ {goalMax} kg</span>
                 </span>
               </div>
 
               <div className="h-3 bg-black/20 rounded-full overflow-hidden mb-2">
                 <div
-                                        className="h-full bg-linear-to-r from-[#AED581] to-[#C5E1A5] rounded-full transition-all duration-1000"
+                  className="h-full bg-linear-to-r from-[#AED581] to-[#C5E1A5] rounded-full transition-all duration-1000"
                   style={{ width: `${goalProgress}%` }}
                 />
               </div>
 
               <div className="flex justify-between text-xs text-green-200">
-                <span>{stats.totalWeight > 200 ? "Current Level: Eco Warrior" : "Current Level: Seedling"}</span>
+                <span>
+                  {stats.totalWeight > 200
+                    ? "Current Level: Eco Warrior"
+                    : "Current Level: Seedling"}
+                </span>
                 <span className="flex items-center gap-1">
-                  Next: {stats.totalWeight > 200 ? "Earth Guardian" : "Eco Warrior"} <ChevronRight size={10} />
+                  Next:{" "}
+                  {stats.totalWeight > 200 ? "Earth Guardian" : "Eco Warrior"}{" "}
+                  <ChevronRight size={10} />
                 </span>
               </div>
             </div>
@@ -141,7 +228,9 @@ const Dashboard = () => {
             <div className="bg-white/10 p-6 rounded-2xl border border-white/10">
               <Wallet size={20} className="mb-3" />
               <p className="text-green-200 text-sm">Total Earnings</p>
-              <h3 className="text-3xl font-bold">₹ {stats.totalEarnings.toLocaleString()}</h3>
+              <h3 className="text-3xl font-bold">
+                ₹ {stats.totalEarnings.toLocaleString()}
+              </h3>
               <p className="text-xs mt-2 flex items-center gap-1">
                 <TrendingUp size={12} /> Live tracking enabled
               </p>
@@ -151,7 +240,9 @@ const Dashboard = () => {
               <Leaf size={20} className="mb-3" />
               <p className="text-green-200 text-sm">Waste Recycled</p>
               <h3 className="text-3xl font-bold">{stats.totalWeight} kg</h3>
-              <p className="text-xs mt-2">Saved {Math.floor(stats.totalWeight / 20)} trees</p>
+              <p className="text-xs mt-2">
+                Saved {Math.floor(stats.totalWeight / 20)} trees
+              </p>
             </div>
           </div>
         </div>
@@ -179,26 +270,38 @@ const Dashboard = () => {
             </thead>
 
             <tbody>
-              {currentItems.length > 0 ? currentItems.map((item) => (
-                <tr key={item.id} className="border-b">
-                  <td className="p-5">{item.date}</td>
-                  <td className="p-5 font-semibold">{item.type || item.scrapType}</td>
-                  <td className="p-5">{item.weight}</td>
-                  <td className="p-5 font-bold text-[#2E7D32]">{item.amount || item.collectedAmount}</td>
-                  <td className="p-5 text-green-700">{item.status}</td>
+              {currentItems.length > 0 ? (
+                currentItems.map((item) => (
+                  <tr key={item.id} className="border-b">
+                    <td className="p-5">{item.date}</td>
+                    <td className="p-5 font-semibold">
+                      {item.type || item.scrapType}
+                    </td>
+                    <td className="p-5">{item.weight}</td>
+                    <td className="p-5 font-bold text-[#2E7D32]">
+                      {item.amount || item.collectedAmount}
+                    </td>
+                    <td className="p-5 text-green-700">{item.status}</td>
 
-                  <td className="p-5 text-center">
-                    <button onClick={() => handleView(item.id)} className="p-2 mr-2 hover:bg-green-100 rounded">
-                      <Eye size={18} />
-                    </button>
-                    <button onClick={() => handleDownload(item.id)} className="p-2 hover:bg-green-100 rounded">
-                      <Download size={18} />
-                    </button>
-                  </td>
-                </tr>
-              )) : (
+                    <td className="p-5 text-center">
+                      <button
+                        onClick={() => handleView(item.id)}
+                        className="p-2 mr-2 hover:bg-green-100 rounded">
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(item.id)}
+                        className="p-2 hover:bg-green-100 rounded">
+                        <Download size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan="6" className="p-12 text-center text-gray-500 italic">
+                  <td
+                    colSpan="6"
+                    className="p-12 text-center text-gray-500 italic">
                     <History className="mx-auto mb-2 opacity-20" size={40} />
                     No pickups found yet. Start by booking your first pickup!
                   </td>
@@ -218,16 +321,14 @@ const Dashboard = () => {
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 border rounded disabled:opacity-50"
-            >
+              className="px-4 py-2 border rounded disabled:opacity-50">
               <ChevronLeft size={16} /> Prev
             </button>
 
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 border rounded disabled:opacity-50"
-            >
+              className="px-4 py-2 border rounded disabled:opacity-50">
               Next <ChevronRight size={16} />
             </button>
           </div>

@@ -3,7 +3,7 @@ import {
   TrendingUp, Users, DollarSign, Package, Calendar,
   Download, BarChart3, PieChart, Activity
 } from 'lucide-react';
-import { auth, db } from '../../firebase';
+import { db } from '../../firebase';
 import { collection, onSnapshot, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 
 const AnalyticsReports = () => {

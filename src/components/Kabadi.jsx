@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LiveMap from "./User/LiveMap";
-import { auth, db } from "../firebase";
+import { partnerAuth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -166,8 +166,17 @@ const KabadBechoDriverDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [driverLocation, setDriverLocation] = useState(null);
 
-  const currentDriverId = auth.currentUser?.uid;
+  const [currentDriverId, setCurrentDriverId] = useState(null);
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(partnerAuth, (user) => {
+      if (user) {
+        setCurrentDriverId(user.uid);
+      }
+    });
+
+    return () => unsub();
+  }, []);
   // Get driver's real-time location (no hardcoding)
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -210,9 +219,9 @@ const KabadBechoDriverDashboard = () => {
 
   const driverStats = useMemo(
     () => ({
-      name: auth.currentUser?.displayName || "Partner",
-      id: auth.currentUser?.uid
-        ? auth.currentUser.uid.slice(0, 6).toUpperCase()
+      name: partnerAuth.currentUser?.displayName || "Partner",
+      id: partnerAuth.currentUser?.uid
+        ? partnerAuth.currentUser.uid.slice(0, 6).toUpperCase()
         : "DRV-" + Date.now().toString().slice(-4),
       todayPickups: myPickups.length,
       completedToday: myPickups.filter((p) => p.status === "completed").length,
@@ -237,14 +246,14 @@ const KabadBechoDriverDashboard = () => {
       totalTrips: myPickups.filter((p) => p.status === "completed").length,
       joinedDate: "Joined Recently",
       vehicleNo: "Assignment Pending",
-      phone: auth.currentUser?.phoneNumber || "No phone set",
-      email: auth.currentUser?.email || "no-email@partner.com",
+      phone: partnerAuth.currentUser?.phoneNumber || "No phone set",
+      email: partnerAuth.currentUser?.email || "no-email@partner.com",
     }),
     [myPickups],
   );
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(partnerAuth, (user) => {
       if (!user) {
         setIsLoading(false);
         return;
@@ -355,7 +364,7 @@ const KabadBechoDriverDashboard = () => {
   const navigate = useNavigate();
 
   const handleSignOut = useCallback(async () => {
-    await auth.signOut();
+    await partnerAuth.signOut();
     localStorage.removeItem("token");
     navigate("/kabadi/login");
   }, [navigate]);
